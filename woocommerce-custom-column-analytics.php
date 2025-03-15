@@ -65,30 +65,47 @@ add_filter('woocommerce_analytics_orders_select_query', function ($results, $arg
             
             // Add shipping details
             if ($order) {
+                // Check if we're dealing with a regular order, not a refund
+                $is_refund = is_a($order, 'WC_Order_Refund');
+                
                 // Shipping name
-                $results->data[$key]['shipping_name'] = trim($order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name());
+                if (!$is_refund && method_exists($order, 'get_shipping_first_name') && method_exists($order, 'get_shipping_last_name')) {
+                    $results->data[$key]['shipping_name'] = trim($order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name());
+                } else {
+                    $results->data[$key]['shipping_name'] = '';
+                }
                 
                 // Shipping phone - fallback to billing phone if shipping phone doesn't exist
                 $shipping_phone = '';
-                if (method_exists($order, 'get_shipping_phone')) {
+                if (!$is_refund && method_exists($order, 'get_shipping_phone')) {
                     $shipping_phone = $order->get_shipping_phone();
                 }
-                if (empty($shipping_phone)) {
+                if (empty($shipping_phone) && method_exists($order, 'get_billing_phone')) {
                     $shipping_phone = $order->get_billing_phone();
                 }
                 $results->data[$key]['shipping_phone'] = $shipping_phone;
                 
                 // Shipping address
-                $address_parts = array(
-                    $order->get_shipping_address_1(),
-                    $order->get_shipping_address_2(),
-                    $order->get_shipping_city(),
-                    $order->get_shipping_state(),
-                    $order->get_shipping_postcode(),
-                    $order->get_shipping_country()
-                );
-                $address_parts = array_filter($address_parts);
-                $results->data[$key]['shipping_address'] = implode(', ', $address_parts);
+                if (!$is_refund && 
+                    method_exists($order, 'get_shipping_address_1') && 
+                    method_exists($order, 'get_shipping_address_2') && 
+                    method_exists($order, 'get_shipping_city') && 
+                    method_exists($order, 'get_shipping_state') && 
+                    method_exists($order, 'get_shipping_postcode') && 
+                    method_exists($order, 'get_shipping_country')) {
+                    $address_parts = array(
+                        $order->get_shipping_address_1(),
+                        $order->get_shipping_address_2(),
+                        $order->get_shipping_city(),
+                        $order->get_shipping_state(),
+                        $order->get_shipping_postcode(),
+                        $order->get_shipping_country()
+                    );
+                    $address_parts = array_filter($address_parts);
+                    $results->data[$key]['shipping_address'] = implode(', ', $address_parts);
+                } else {
+                    $results->data[$key]['shipping_address'] = '';
+                }
             } else {
                 $results->data[$key]['shipping_name'] = '';
                 $results->data[$key]['shipping_phone'] = '';
