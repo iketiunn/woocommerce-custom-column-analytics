@@ -40,7 +40,7 @@ function add_extension_register_script() {
 add_action( 'admin_enqueue_scripts', 'add_extension_register_script' );
 
 /**
- * Add payment method to the WooCommerce Analytics Orders data.
+ * Add payment method, shipping method, and shipping details to the WooCommerce Analytics Orders data.
  */
 add_filter('woocommerce_analytics_orders_select_query', function ($results, $args) {
     if ($results && isset($results->data) && !empty($results->data)) {
@@ -48,9 +48,52 @@ add_filter('woocommerce_analytics_orders_select_query', function ($results, $arg
             $order = wc_get_order($result['order_id']);
             
             // Retrieve payment method title
-            $payment_method_title = $order ? $order->get_payment_method_title() : '';
-
-            $results->data[$key]['payment_method'] = $payment_method_title;
+            // $payment_method_title = $order ? $order->get_payment_method_title() : '';
+            // $results->data[$key]['payment_method'] = $payment_method_title;
+            
+            // Retrieve shipping method title
+            $shipping_method_title = '';
+            if ($order) {
+                $shipping_methods = $order->get_shipping_methods();
+                $method_titles = [];
+                foreach ($shipping_methods as $shipping_method) {
+                    $method_titles[] = $shipping_method->get_method_title();
+                }
+                $shipping_method_title = implode(', ', $method_titles);
+            }
+            $results->data[$key]['shipping_method'] = $shipping_method_title;
+            
+            // Add shipping details
+            if ($order) {
+                // Shipping name
+                $results->data[$key]['shipping_name'] = trim($order->get_shipping_first_name() . ' ' . $order->get_shipping_last_name());
+                
+                // Shipping phone - fallback to billing phone if shipping phone doesn't exist
+                $shipping_phone = '';
+                if (method_exists($order, 'get_shipping_phone')) {
+                    $shipping_phone = $order->get_shipping_phone();
+                }
+                if (empty($shipping_phone)) {
+                    $shipping_phone = $order->get_billing_phone();
+                }
+                $results->data[$key]['shipping_phone'] = $shipping_phone;
+                
+                // Shipping address
+                $address_parts = array(
+                    $order->get_shipping_address_1(),
+                    $order->get_shipping_address_2(),
+                    $order->get_shipping_city(),
+                    $order->get_shipping_state(),
+                    $order->get_shipping_postcode(),
+                    $order->get_shipping_country()
+                );
+                $address_parts = array_filter($address_parts);
+                $results->data[$key]['shipping_address'] = implode(', ', $address_parts);
+            } else {
+                $results->data[$key]['shipping_name'] = '';
+                $results->data[$key]['shipping_phone'] = '';
+                $results->data[$key]['shipping_address'] = '';
+            }
         }
     }
 
@@ -58,17 +101,25 @@ add_filter('woocommerce_analytics_orders_select_query', function ($results, $arg
 }, 10, 2);
 
 /**
- * Add the payment method column to the exported CSV file.
+ * Add the payment method, shipping method, and shipping details columns to the exported CSV file.
  */
 add_filter('woocommerce_report_orders_export_columns', function ($export_columns){
-    $export_columns['payment_method'] = 'Payment Method';
+    // $export_columns['payment_method'] = 'Payment Method';
+    $export_columns['shipping_method'] = 'Shipping Method';
+    $export_columns['shipping_name'] = 'Shipping Name';
+    $export_columns['shipping_phone'] = 'Shipping Phone';
+    $export_columns['shipping_address'] = 'Shipping Address';
     return $export_columns;
 });
 
 /**
- * Add the payment method data to the exported CSV file.
+ * Add the payment method, shipping method, and shipping details data to the exported CSV file.
  */
 add_filter('woocommerce_report_orders_prepare_export_item', function ($export_item, $item){
-    $export_item['payment_method'] = $item['payment_method'];
+    // $export_item['payment_method'] = $item['payment_method'];
+    $export_item['shipping_method'] = $item['shipping_method'];
+    $export_item['shipping_name'] = $item['shipping_name'];
+    $export_item['shipping_phone'] = $item['shipping_phone'];
+    $export_item['shipping_address'] = $item['shipping_address'];
     return $export_item;
 }, 10, 2);
