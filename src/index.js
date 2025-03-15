@@ -41,10 +41,7 @@ const addTableColumn = (reportTableData) => {
         const item = reportTableData.items.data[index];
         const newRow = [
             ...row,
-            {
-                display: item.payment_method || __('N/A', 'woocommerce-custom-column-analytics'),
-                value: item.payment_method || '',
-            },
+            // Remove payment method column since it's commented out in PHP
             {
                 display: item.shipping_method || __('N/A', 'woocommerce-custom-column-analytics'),
                 value: item.shipping_method || '',
