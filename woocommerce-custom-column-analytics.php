@@ -40,6 +40,58 @@ function add_extension_register_script() {
 add_action( 'admin_enqueue_scripts', 'add_extension_register_script' );
 
 /**
+ * Taiwan state/city translations - maps English names to Traditional Chinese
+ *
+ * @return array Translation mapping of Taiwan states
+ */
+function wc_custom_column_get_taiwan_state_translations() {
+    return array(
+        'TAIPEI CITY' => '台北市',
+        'TAIPEI' => '台北市',
+        'NEW TAIPEI CITY' => '新北市',
+        'NEW TAIPEI' => '新北市',
+        'TAOYUAN CITY' => '桃園市',
+        'TAOYUAN' => '桃園市',
+        'TAICHUNG CITY' => '台中市',
+        'TAICHUNG' => '台中市',
+        'TAINAN CITY' => '台南市',
+        'TAINAN' => '台南市',
+        'KAOHSIUNG CITY' => '高雄市',
+        'KAOHSIUNG' => '高雄市',
+        'HSINCHU CITY' => '新竹市',
+        'HSINCHU COUNTY' => '新竹縣',
+        'HSINCHU' => '新竹',
+        'MIAOLI COUNTY' => '苗栗縣',
+        'MIAOLI' => '苗栗縣',
+        'CHANGHUA COUNTY' => '彰化縣',
+        'CHANGHUA' => '彰化縣',
+        'NANTOU COUNTY' => '南投縣',
+        'NANTOU' => '南投縣',
+        'YUNLIN COUNTY' => '雲林縣',
+        'YUNLIN' => '雲林縣',
+        'CHIAYI CITY' => '嘉義市',
+        'CHIAYI COUNTY' => '嘉義縣',
+        'CHIAYI' => '嘉義',
+        'PINGTUNG COUNTY' => '屏東縣',
+        'PINGTUNG' => '屏東縣',
+        'YILAN COUNTY' => '宜蘭縣',
+        'YILAN' => '宜蘭縣',
+        'HUALIEN COUNTY' => '花蓮縣',
+        'HUALIEN' => '花蓮縣',
+        'TAITUNG COUNTY' => '台東縣',
+        'TAITUNG' => '台東縣',
+        'PENGHU COUNTY' => '澎湖縣',
+        'PENGHU' => '澎湖縣',
+        'KINMEN COUNTY' => '金門縣',
+        'KINMEN' => '金門縣',
+        'LIENCHIANG COUNTY' => '連江縣',
+        'LIENCHIANG' => '連江縣',
+        'KEELUNG CITY' => '基隆市',
+        'KEELUNG' => '基隆市',
+    );
+}
+
+/**
  * Add payment method, shipping method, and shipping details to the WooCommerce Analytics Orders data.
  */
 add_filter('woocommerce_analytics_orders_select_query', function ($results, $args) {
@@ -93,16 +145,28 @@ add_filter('woocommerce_analytics_orders_select_query', function ($results, $arg
                     method_exists($order, 'get_shipping_state') && 
                     method_exists($order, 'get_shipping_postcode') && 
                     method_exists($order, 'get_shipping_country')) {
-                    $address_parts = array(
-                        $order->get_shipping_address_1(),
-                        $order->get_shipping_address_2(),
-                        $order->get_shipping_city(),
-                        $order->get_shipping_state(),
-                        $order->get_shipping_postcode(),
-                        $order->get_shipping_country()
+                    
+                    // Format state and city together with Chinese characters
+                    $state = $order->get_shipping_state();
+                    $city = $order->get_shipping_city();
+                    
+                    // Translate state name to Traditional Chinese if it's a Taiwan address
+                    $taiwan_states = wc_custom_column_get_taiwan_state_translations();
+                    $state_upper = strtoupper($state);
+                    if (isset($taiwan_states[$state_upper])) {
+                        $state = $taiwan_states[$state_upper];
+                    }
+                    
+                    // Custom address format: "postcode, state city, address_1"
+                    $custom_address_parts = array(
+                        $order->get_shipping_postcode(),                  // 247
+                        $state . ' ' . $city,                             // 新北市 蘆洲區
+                        $order->get_shipping_address_1()                  // 民族路227巷
                     );
-                    $address_parts = array_filter($address_parts);
-                    $results->data[$key]['shipping_address'] = implode(', ', $address_parts);
+                    
+                    // Filter out empty parts and combine
+                    $custom_address_parts = array_filter($custom_address_parts);
+                    $results->data[$key]['shipping_address'] = implode(', ', $custom_address_parts);
                 } else {
                     $results->data[$key]['shipping_address'] = '';
                 }
